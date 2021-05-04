@@ -172,7 +172,7 @@ LANGUAGES = {
     'LAV': None,           # Latvian
     'NOR': 'norwegian',    # Norwegian
     'POL': 'polish',       # Polish
-    'POR': 'portoguese',   # Portuguese
+    'POR': 'portuguese',   # Portuguese
     'RUS': 'russian',      # Russian
     'SCR': None,           # Croatian
     'SPA': 'spanish',      # Spanish
@@ -185,7 +185,7 @@ DOMAIN_SPECIFIC_STOPWORDS = {
 }
 
 SPACY_LANGUAGE_MAP = {
-    'ENG': 'en',
+    'ENG': 'en_core_web_sm',
     'GER': 'de',
     'SPA': 'es',
     'POR': 'pt',

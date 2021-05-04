@@ -96,3 +96,9 @@ simstring/
 
 # Ignored test file
 test.py
+
+# Ignore idea folders
+.idea/
+
+# Ignore test app folder
+_app/

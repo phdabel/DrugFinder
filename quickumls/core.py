@@ -176,7 +176,7 @@ class QuickUMLS(object):
         """Computes a summary of the matcher options.
 
         Returns:
-            Dict: Dictionary containing information on the QuicUMLS instance.
+            Dict: Dictionary containing information on the QuickUMLS instance.
         """
         return self.info
 
@@ -445,7 +445,7 @@ class QuickUMLS(object):
         parsed = self.nlp(u'{}'.format(text))
         
         # pass in parsed spacy doc to get concept matches
-        matches = self._match(parsed)
+        matches = self._match(parsed, best_match=best_match, ignore_syntax=ignore_syntax)
 
         return matches
         
