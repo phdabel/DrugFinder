@@ -102,3 +102,4 @@ test.py
 
 # Ignore test app folder
 _app/
+_app
