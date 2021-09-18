@@ -5,7 +5,3 @@ unidecode>=0.4.19
 nltk>=3.6.2
 quickumls_simstring>=1.1.5.post1
 unqlite>=0.9.2
-pandas>=1.2.4
-mysql-connector-python>=8.0.25
-setuptools>=57.0.0
-six>=1.16.0
