@@ -13,6 +13,7 @@ import leveldb
 import numpy
 import six
 from six.moves import xrange
+import logging
 
 try:
     import unqlite
@@ -176,7 +177,7 @@ def countlines(fn):
 
 
 class SimstringDBWriter(object):
-    def __init__(self, path):
+    def __init__(self, path, filename="umls-terms.simstring"):
 
         if not (os.path.exists(path)) or not (os.path.isdir(path)):
             err_msg = ('"{}" does not exists or it is not a directory.').format(path)
@@ -188,7 +189,7 @@ class SimstringDBWriter(object):
                 pass
 
         self.db = simstring.writer(
-            prepare_string_for_db_input(os.path.join(path, "umls-terms.simstring")),
+            prepare_string_for_db_input(os.path.join(path, filename)),
             3,
             False,
             True,
@@ -200,19 +201,19 @@ class SimstringDBWriter(object):
 
 
 class SimstringDBReader(object):
-    def __init__(self, path, similarity_name, threshold):
+    def __init__(self, path, similarity_name, threshold, filename="umls-terms.simstring"):
         if not (os.path.exists(path)) or not (os.path.isdir(path)):
             err_msg = ('"{}" does not exists or it is not a directory.').format(path)
             raise IOError(err_msg)
 
         self.db = simstring.reader(
-            prepare_string_for_db_input(os.path.join(path, "umls-terms.simstring"))
+            prepare_string_for_db_input(os.path.join(path, filename))
         )
         self.db.measure = getattr(simstring, similarity_name)
         self.db.threshold = threshold
 
     def get(self, term):
-        term = prepare_string_for_db_input(safe_unicode(term))
+        term = prepare_string_for_db_input(safe_unicode(term.lower()))
         return self.db.retrieve(term)
 
 
@@ -237,10 +238,86 @@ class Intervals(object):
         self.intervals.append(interval)
 
 
+class DrugBankDB(object):
+    def __init__(self, path, database_backend="unqlite"):
+        if not (os.path.exists(path) or os.path.isdir(path)):
+            err_msg = '"{}" is not a valid directory'.format(path)
+            raise IOError(err_msg)
+
+        if database_backend == "unqlite":
+            assert UNQLITE_AVAILABLE, (
+                "You selected unqlite as database backend, but it is not "
+                "installed. Please install it via `pip install unqlite`"
+            )
+            self.drugbank_db = unqlite.UnQLite(os.path.join(path, "drugbank_id.unqlite"))
+            self.drugbank_db_put = self.drugbank_db.store
+            self.drugbank_db_get = self.drugbank_db.fetch
+            self.drugbank_data_db = unqlite.UnQLite(os.path.join(path, "drugbank_data.unqlite"))
+            self.drugbank_data_db_put = self.drugbank_data_db.store
+            self.drugbank_data_db_get = self.drugbank_data_db.fetch
+        elif database_backend == "leveldb":
+            self.drugbank_db = leveldb.LevelDB(os.path.join(path, "drugbank_id.leveldb"))
+            self.drugbank_db_put = self.drugbank_db.Put
+            self.drugbank_db_get = self.drugbank_db.Get
+            self.drugbank_data_db = leveldb.LevelDB(os.path.join(path, "drugbank_data.leveldb"))
+            self.drugbank_data_db_put = self.drugbank_data_db.Put
+            self.drugbank_data_db_get = self.drugbank_data_db.Get
+        else:
+            raise ValueError(f"database_backend {database_backend} not recognized")
+
+    def has_term(self, term):
+        term = prepare_string_for_db_input(safe_unicode(term))
+        try:
+            self.drugbank_db_get(db_key_encode(term))
+            return True
+        except KeyError:
+            return
+
+    @staticmethod
+    def _validate(drug):
+        keys = ['name', 'drugbank_id']
+        if not all([k in list(drug.keys()) for k in keys]):
+            raise ValueError("The drug item is not valid to be inserted.")
+        return True
+
+    def insert(self, drug):
+        try:
+            DrugBankDB._validate(drug)
+        except ValueError as err:
+            logging.debug(err)
+            logging.debug("Drug data: %s", list(drug.keys()))
+            return
+
+        name = prepare_string_for_db_input(safe_unicode(drug['name'].lower()))
+        synonyms = [prepare_string_for_db_input(safe_unicode(synonym.lower())) for synonym in drug['synonyms'].split(',') if len(synonym) > 0]
+        products = [prepare_string_for_db_input(safe_unicode(product.lower())) for product in drug['products'].split(',') if len(product) > 0]
+        drugbank_id = prepare_string_for_db_input(safe_unicode(drug.pop('drugbank_id')))
+
+        self.drugbank_db_put(name, pickle.dumps(drugbank_id))
+        if len(synonyms) > 0:
+            [self.drugbank_db_put(synonym, pickle.dumps(drugbank_id)) for synonym in synonyms if len(synonym) > 0]
+        if len(products) > 0:
+            [self.drugbank_db_put(product, pickle.dumps(drugbank_id)) for product in products if len(product) > 0]
+
+        try:
+            self.drugbank_data_db_get(db_key_encode(drugbank_id))
+        except KeyError:
+            self.drugbank_data_db_put(db_key_encode(drugbank_id), pickle.dumps(drug))
+
+    def get(self, term):
+        term = prepare_string_for_db_input(safe_unicode(term.lower()))
+        try:
+            drugbank_id = pickle.loads(self.drugbank_db_get(db_key_encode(term)))
+        except KeyError:
+            return None
+
+        return drugbank_id, pickle.loads(self.drugbank_data_db_get(db_key_encode(drugbank_id)))
+
+
 class CuiSemTypesDB(object):
     def __init__(self, path, database_backend="leveldb"):
         if not (os.path.exists(path) or os.path.isdir(path)):
-            err_msg = ('"{}" is not a valid directory').format(path)
+            err_msg = '"{}" is not a valid directory'.format(path)
             raise IOError(err_msg)
 
         if database_backend == "unqlite":

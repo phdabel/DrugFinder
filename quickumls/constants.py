@@ -211,7 +211,7 @@ LANGUAGES = {
     "LAV": None,  # Latvian
     "NOR": "norwegian",  # Norwegian
     "POL": "polish",  # Polish
-    "POR": "portoguese",  # Portuguese
+    "POR": "portuguese",  # Portuguese
     "RUS": "russian",  # Russian
     "SCR": None,  # Croatian
     "SPA": "spanish",  # Spanish
@@ -220,6 +220,10 @@ LANGUAGES = {
 }
 
 DOMAIN_SPECIFIC_STOPWORDS = {"time"}
+
+DRUGBANK_SPECIFIC_STOPWORDS = {"treatment", "standard", "solution", "mg", "control", "health", "care",
+                               "professionals", "nasal", "channels", "fresh", "regimens", "flu",
+                               "completed", "easy", 'white', "dimensions", "water", "oil"}
 
 SPACY_LANGUAGE_MAP = {
     "ENG": "en_core_web_sm",
