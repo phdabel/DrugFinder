@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
 from unittest import TestCase, main
-from quickumls.toolbox import SimstringDBReader, DrugBankDB
+from drugfinder.simstring import SimstringDBReader
+from drugfinder.utils import DrugBankDB
 
 
 class TestSearch(TestCase):

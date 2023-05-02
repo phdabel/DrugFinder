@@ -1,4 +1,4 @@
-from quickumls.drugs.core import DrugFinder
+from drugfinder.core import DrugFinder
 import os
 from pathlib import Path
 from pprint import pprint

@@ -5,3 +5,5 @@ unidecode>=0.4.19
 nltk>=3.6.2
 quickumls_simstring>=1.1.5.post1
 unqlite>=0.9.2
+tqdm>=4.65.0
+xmlschema>=2.1.1

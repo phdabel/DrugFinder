@@ -1,10 +1,12 @@
 import os
 import sys
 import datetime
-from quickumls import constants, toolbox
+
+from drugfinder.utils import DrugBankDB, Intervals, safe_unicode, get_similarity
+from drugfinder.simstring import SimstringDBReader
+from drugfinder import constants
 import nltk
 import spacy
-from six.moves import xrange
 from unidecode import unidecode
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s',
@@ -35,12 +37,16 @@ class DrugFinder(object):
                 overlapping_criteria (str, optional): Criteria used for tiebreakers: can be `score` or `length`.
                 threshold (float, optional): Minimum similarity between strings. Defaults to 0.7.
                 window (int, optional): Maximum amount of tokens to consider for matching. Defaults to 5.
-                similarity_name (str, optional): similarity measure for string comparison. It can be `dice`, `jaccard`, `cosine` or `overlap`. Defaults to `cosine`.
+                similarity_name (str, optional): similarity measure for string comparison. It can be `dice`, `jaccard`,
+                                                    `cosine` or `overlap`. Defaults to `cosine`.
                 min_match_length (int, optional): Minimum number of tokens for comparison. Defaults to 1.
                 verbose (bool, optional): outputs every drug found in the text. Defaults to false.
                 spacy_component (bool, optional): TODO:?? Defaults to false.
-                umls_linking (bool, optional): TODO: links the drugs found in the text with UMLS concepts using QuickUMLS. Defaults to false.
+                umls_linking (bool, optional): TODO: links the drugfinder found in the text with UMLS concepts using
+                                                QuickUMLS. Defaults to false.
         """
+        if umls_linking:
+            raise Exception("UMLS linking is not supported yet")
 
         self.verbose = verbose
         self.__validate_parameters(overlapping_criteria, similarity_name)
@@ -80,7 +86,7 @@ class DrugFinder(object):
         self._stopwords = self._stopwords.union(constants.DRUGBANK_SPECIFIC_STOPWORDS)
         self._info = None
 
-        # if this is not being executed as as spacy component, then it must be standalone
+        # if this is not being executed as spacy component, then it must be standalone
         if spacy_component:
             # In this case, the pipeline is external to this current class
             self.nlp = None
@@ -98,11 +104,11 @@ class DrugFinder(object):
                 )
                 raise OSError(msg)
 
-        self.simstring_db = toolbox.SimstringDBReader(path=simstring_fp,
-                                                      similarity_name=similarity_name,
-                                                      threshold=threshold,
-                                                      filename='drug-terms.simstring')
-        self.drugbank_db = toolbox.DrugBankDB(path=drugbank_db, database_backend=self._database_backend)
+        self.simstring_db = SimstringDBReader(path=simstring_fp,
+                                              similarity_name=similarity_name,
+                                              threshold=threshold,
+                                              filename='drug-terms.simstring')
+        self.drugbank_db = DrugBankDB(path=drugbank_db, database_backend=self._database_backend)
 
     def get_info(self):
         """Computes a summary of the matcher options.
@@ -205,7 +211,7 @@ class DrugFinder(object):
             token.i for token in sentence if not self._is_valid_middle_token(token)
         }
 
-        for i in xrange(sentence_length):
+        for i in range(sentence_length):
             token = sentence[i]
 
             if not self._is_valid_token(token):
@@ -226,11 +232,11 @@ class DrugFinder(object):
                 i + 1 == sentence_length
                 and self._is_valid_end_token(token)  # it's the last token
                 and len(token)  # it's a valid end token
-                >= self.min_match_length  # it's of miminum length
+                >= self.min_match_length  # it's of minimum length
             ):
                 yield token.idx, token.idx + len(token), token.text
 
-            for j in xrange(i + 1, span_end):
+            for j in range(i + 1, span_end):
                 if compensate:
                     compensate = False
                     continue
@@ -262,7 +268,7 @@ class DrugFinder(object):
             It is used when the ignore_syntax parameter is true.
         """
         for i in range(len(parsed)):
-            for j in xrange(i + 1, min(i + self.window, len(parsed)) + 1):
+            for j in range(i + 1, min(i + self.window, len(parsed)) + 1):
                 span = parsed[i:j]
 
                 if not self._is_longer_than_min(span):
@@ -290,7 +296,7 @@ class DrugFinder(object):
 
                 drugbank_id, data = item
 
-                match_similarity = toolbox.get_similarity(
+                match_similarity = get_similarity(
                     x=ngram_normalized,
                     y=match,
                     n=self.ngram_length,
@@ -313,7 +319,7 @@ class DrugFinder(object):
                         "start": start,
                         "end": end,
                         "ngram": ngram,
-                        "term": toolbox.safe_unicode(match),
+                        "term": safe_unicode(match),
                         "drugbank_id": drugbank_id,
                         "data": data,
                         "similarity": match_similarity,
@@ -345,7 +351,7 @@ class DrugFinder(object):
             else self._select_score
         )
         matches = sorted(matches, key=sort_func, reverse=True)
-        intervals = toolbox.Intervals()
+        intervals = Intervals()
         final_matches_subset = []
         for match in matches:
             match_interval = (match[0]["start"], match[0]["end"])
@@ -373,13 +379,13 @@ class DrugFinder(object):
         )
         return True
 
-    def match(self, text, best_match=True, ignore_syntax=False) -> tuple:
+    def match(self, text, best_match=True, ignore_syntax=False):
         parsed = self.nlp("{}".format(text))
 
         # pass in parsed spacy doc to get concept matches
         return self._match(parsed, best_match, ignore_syntax)
 
-    def _match(self, doc, best_match=True, ignore_syntax=False) -> tuple:
+    def _match(self, doc, best_match=True, ignore_syntax=False):
 
         if ignore_syntax:
             ngrams = self._make_token_sequences(doc)

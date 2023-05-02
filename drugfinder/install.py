@@ -1,12 +1,14 @@
 import os
 import sys
-import argparse
 import shutil
 import time
 import xmlschema
 import tqdm
 import logging
-from quickumls.toolbox import mkdir, SimstringDBWriter, DrugBankDB
+
+from drugfinder.utils import parse_args, DrugBankDB, mkdir
+from drugfinder.simstring import SimstringDBWriter
+
 try:
     from unidecode import unidecode
 except ImportError:
@@ -21,11 +23,13 @@ def get_drugbank_iterator(path, schema):
 
     # parse synonyms of the drug element
     def get_synonyms(_data):
-        return {'synonyms': ';'.join([j for k, v in _data[list(_data.keys())[0]][0][1] if k == 'synonyms' and v is not None for i, j in v if i == 'synonym'])}
+        return {'synonyms': ';'.join([j for k, v in _data[list(_data.keys())[0]][0][1] if k == 'synonyms' and
+                                      v is not None for i, j in v if i == 'synonym'])}
 
     # parse product names of the drug element
     def get_products(_data):
-        return {'products': ';'.join(set([y for k, v in _data[list(_data.keys())[0]][0][1] if k == 'products' and v is not None for i, j in v if i == 'product' for x, y in j if x == 'name']))}
+        return {'products': ';'.join(set([y for k, v in _data[list(_data.keys())[0]][0][1] if k == 'products' and
+                                          v is not None for i, j in v if i == 'product' for x, y in j if x == 'name']))}
 
     # parse basic data of the drug element
     def get_data(_data):
@@ -34,9 +38,11 @@ def get_drugbank_iterator(path, schema):
 
     # retrieves a dictionary to be saved in the simstring-db
     def get_dict(_data):
-        return {**get_synonyms(_data), **get_products(_data), **get_data(_data), 'drugbank_id': [v[0] for k, v in _data[list(_data.keys())[0]][0][1] if k == 'drugbank-id' and v[1] == 'primary'][0]}
+        return {**get_synonyms(_data), **get_products(_data), **get_data(_data),
+                'drugbank_id': [v[0] for k, v in _data[list(_data.keys())[0]][0][1]
+                                if k == 'drugbank-id' and v[1] == 'primary'][0]}
 
-    # cuts off the namespace of a element's tag
+    # cuts off the namespace of an element's tag
     def get_tag(tag): return tag[len('{%s}' % schema.namespaces['']):]
 
     # pops out children elements to assign to the parent element
@@ -80,7 +86,7 @@ def extract_from_drugbank(
 ):
     start = time.time()
     logging.info("Loading drug data...")
-    print("Loading drug data...", end=" ")
+    print("Loading drug bank data...", end=" ")
     schema = xmlschema.XMLSchema(drugbank_schema_filepath)
     drugbank_iterator = get_drugbank_iterator(path=drugbank_filepath, schema=schema)
     for content in tqdm.tqdm(drugbank_iterator):
@@ -103,47 +109,16 @@ def parse_and_encode_ngrams(
     mkdir(simstring_dir)
     mkdir(drugbank_db_dir)
 
-    ss_db = SimstringDBWriter(simstring_dir, filename="drug-terms.simstring")
+    simstring_db = SimstringDBWriter(simstring_dir, filename="drug-terms.simstring")
     drugbank_db = DrugBankDB(drugbank_db_dir, database_backend=database_backend)
 
     for content in drugbank_iterator:
-        ss_db.insert(content['name'].lower())
+        simstring_db.insert(content['name'].lower())
         if len(content['synonyms']) > 0:
-            [ss_db.insert(synonym.lower()) for synonym in content['synonyms'].split(';')]
+            [simstring_db.insert(synonym.lower()) for synonym in content['synonyms'].split(';')]
         if len(content['products']) > 0:
-            [ss_db.insert(product.lower()) for product in content['products'].split(';')]
+            [simstring_db.insert(product.lower()) for product in content['products'].split(';')]
         drugbank_db.insert(content)
-
-
-def parse_args():
-    ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "drugbank_filepath",
-        help="DrugBank dataset filepath (e.g.: `/home/drugbank/full_database.xml`)"
-    )
-    ap.add_argument(
-        "drugbank_schema_filepath",
-        help="DrugBank XML Schema filepath (e.g.: `/home/drugbank/drugbank.xsd`)"
-    )
-    ap.add_argument(
-        "destination_path",
-        help="Location where the Scriba files are installed"
-    )
-    ap.add_argument(
-        '-U',
-        '--normalize-unicode',
-        action='store_true',
-        help="Normalize unicode strings to their closes ASCII representation"
-    )
-    ap.add_argument(
-        "-d",
-        "--database-backend",
-        choices=("leveldb", "unqlite"),
-        default="unqlite",
-        help="Key-Value database used to store drugbank-ids and drug data",
-    )
-    opts = ap.parse_args()
-    return opts
 
 
 def main():

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from unittest import TestCase, main
-from quickumls.drugs.core import DrugFinder
+from drugfinder.core import DrugFinder
 
 
 class TestDrugFinder(TestCase):
