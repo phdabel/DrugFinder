@@ -40,7 +40,7 @@ def setup_package():
 
     # From https://github.com/explosion/spaCy/blob/master/setup.py
     with chdir(root):
-        with io.open(os.path.join(root, "quickumls", "about.py"), encoding="utf8") as f:
+        with io.open(os.path.join(root, "drugfinder", "about.py"), encoding="utf8") as f:
             about = {}
             exec(f.read(), about)
 
@@ -48,26 +48,25 @@ def setup_package():
         name=about["__title__"],
         version=about["__version__"],
         description=(
-            "QuickUMLS is a tool for fast, unsupervised biomedical "
-            "concept extraction from medical text"
+            "DrugFinder is a tool for fast, unsupervised extraction of "
+            "drug and medication names from free text."
         ),
         packages=PACKAGES,
         long_description=readme,
         long_description_content_type="text/markdown",
         author=about["__author__"],
         author_email=about["__email__"],
-        url="https://github.com/Georgetown-IR-Lab/QuickUMLS",
+        url="https://github.com/phdabel/DrugFinder",
         license=about["__license__"],
         install_requires=requirements,
         dependency_links=dependency_links,
         classifiers=[
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 2",
-            "License :: OSI Approved :: MIT License",
+            "License :: MIT License",
             "Operating System :: OS Independent",
             "Development Status :: 5 - Production/Stable",
             "Topic :: Scientific/Engineering :: Artificial Intelligence",
-            "Topic :: Scientific/Engineering :: Bio-Informatics",
+            "Topic :: Scientific/Engineering :: Text Mining",
         ],
     )
 
