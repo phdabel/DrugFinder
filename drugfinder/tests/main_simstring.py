@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from quickumls.toolbox import SimstringDBReader, DrugBankDB
+from drugfinder.simstring import SimstringDBReader
+from drugfinder.utils import DrugBankDB
 from pprint import pprint
 
 drugbank_data = os.environ['DRUGBANK_DATA'] if 'DRUGBANK_DATA' in os.environ else os.path.join(Path.home(), 'drugbank_data')

@@ -7,6 +7,7 @@ from setuptools import find_packages, setup
 
 PACKAGES = find_packages()
 
+
 # From https://github.com/explosion/spaCy/blob/master/setup.py
 @contextlib.contextmanager
 def chdir(new_dir):
