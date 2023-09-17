@@ -11,6 +11,7 @@ RUN apk update && apk add git
 # Install dependencies
 RUN apk add --no-cache --virtual .build-deps \
     gcc \
+    g++ \
     musl-dev \
     libffi-dev \
     openssl-dev \
@@ -20,6 +21,26 @@ RUN apk add --no-cache --virtual .build-deps \
     && pip install --no-cache-dir poetry \
     && apk del .build-deps
 
+RUN apk update && apk add --no-cache python3 tini bash libgomp && \
+    apk add --no-cache --virtual .build-deps \
+        build-base \
+        python3-dev \
+        g++
+
+RUN python3 -m pip install spacy==${SPACY_VERSION}
+
+RUN python3 -m spacy download ${LANG} && \
+    pip show spacy > /etc/spacy_info
+
+RUN apk del .build-deps \
+        build-base \
+        subversion \
+        python3-dev \
+        g++ && \
+
+    rm -r /usr/lib/python*/ensurepip && \
+    rm -r /root/.cache
+
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -27,7 +48,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Install pip requirements
-# COPY requirements.txt .
+COPY requirements.txt .
 RUN python -m pip install -r requirements.txt
 
 WORKDIR $WORK_DIRECTORY
